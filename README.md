@@ -63,6 +63,20 @@ The example CSV lives at `data/examples/curated_prs_example.csv`. You can replac
 rsid,effect_allele,effect_size,p_value
 ```
 
+## Example Curated Demo Output
+
+| Population | Coverage | Reliability | Gap |
+|-----------|----------|-------------|-----|
+| AFR       | 0.855    | 0.855       | 0.000 |
+| AMR       | 0.855    | 0.855       | 0.000 |
+| ASJ       | 0.855    | 0.397       | 0.535 |
+| EAS       | 0.855    | 0.512       | 0.401 |
+| FIN       | 0.855    | 0.819       | 0.042 |
+| NFE       | 0.855    | 0.855       | 0.000 |
+| SAS       | 0.855    | 0.489       | 0.428 |
+
+![Example Curated Demo Plot](figures/curated_demo_plot.png)
+
 ## GWAS Catalog Path (exploratory)
 
 The GWAS path is useful to explore studies but is more fragile because rsID resolution can be incomplete.
