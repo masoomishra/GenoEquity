@@ -7,9 +7,13 @@ Two-step flow for rsIDs:
 
 from __future__ import annotations
 
+import random
+import time
 from typing import Any, Dict, Iterable, List
 
 import httpx
+
+from .cache import Cache
 
 GNOMAD_ENDPOINT = "https://gnomad.broadinstitute.org/api"
 GNOMAD_DATASET = "gnomad_r4"
@@ -55,11 +59,24 @@ query SearchVariants($query: String!, $dataset: DatasetId!) {
 """
 
 
-def _search_variant_ids(client: httpx.Client, rsid: str) -> List[str]:
+def _search_variant_ids(client: httpx.Client, rsid: str) -> List[str] | None:
     """Resolve an rsID to one or more gnomAD variant_id strings."""
     payload = {"query": SEARCH_QUERY, "variables": {"dataset": GNOMAD_DATASET, "query": rsid}}
-    response = client.post(GNOMAD_ENDPOINT, json=payload, timeout=30)
-    response.raise_for_status()
+    for attempt in range(3):
+        time.sleep(0.2)
+        try:
+            response = client.post(GNOMAD_ENDPOINT, json=payload, timeout=10)
+        except httpx.HTTPError as e:
+            print(f"[SEARCH ERROR] rsid={rsid} error={repr(e)}")
+            raise
+        if response.status_code == 429:
+            wait = (2**attempt) + random.uniform(0, 0.5)
+            time.sleep(wait)
+            continue
+        response.raise_for_status()
+        break
+    else:
+        return None
     data = response.json().get("data", {}) or {}
     results = data.get("variant_search") or []
     return [item.get("variant_id") for item in results if item.get("variant_id")]
@@ -84,50 +101,48 @@ def _fetch_variant_frequencies(client: httpx.Client, variant_id: str) -> Dict[st
 
 
 def resolve_variant_id(client: httpx.Client, rsid: str) -> tuple[str | None, Dict[str, Any] | None]:
-    """Resolve rsID to the best gnomAD variant_id and return its payload.
-
-    Prefers SNVs and candidates with any genome/exome population data.
-    """
     candidate_ids = _search_variant_ids(client, rsid)
+    if candidate_ids is None:
+        return None, None
     if not candidate_ids:
         return None, None
-
+    # Prefer SNVs
     sorted_ids = sorted(candidate_ids, key=lambda vid: _is_snv(vid), reverse=True)
-    fallback_payload: Dict[str, Any] | None = None
     for variant_id in sorted_ids:
-        payload = _fetch_variant_frequencies(client, variant_id)
-        if not payload or payload.get("variant") is None:
-            if fallback_payload is None:
-                fallback_payload = payload
+        try:
+            payload = _fetch_variant_frequencies(client, variant_id)
+        except Exception:
             continue
-        variant = payload.get("variant") or {}
+        if not payload:
+            continue
+        variant = payload.get("variant")
+        if not variant:
+            continue
         genome_pops = (variant.get("genome") or {}).get("populations") or []
         exome_pops = (variant.get("exome") or {}).get("populations") or []
         if genome_pops or exome_pops:
             return variant_id, payload
-        if fallback_payload is None:
-            fallback_payload = payload
-    return sorted_ids[0], fallback_payload
+    return sorted_ids[0] if sorted_ids else None, None
 
 
 def parse_population_frequencies(payload: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
-    """Parse population frequencies from a GraphQL response payload."""
     result: Dict[str, Dict[str, float]] = {}
-    variant = payload.get("variant") or {}
+    # Handle both raw API response and pre-parsed response
+    if "data" in payload:
+        variant = (payload.get("data") or {}).get("variant") or {}
+    else:
+        variant = payload.get("variant") or {}
     genome = variant.get("genome") or {}
     exome = variant.get("exome") or {}
     populations = genome.get("populations") or exome.get("populations") or []
+    ALLOWED = {"AFR", "AMR", "EAS", "NFE", "SAS", "FIN", "ASJ"}
     for pop in populations:
-        pop_id = pop.get("id")
-        label = POPULATION_MAP.get(pop_id, pop_id.upper() if pop_id else "UNK")
-        # Keep only high-level ancestry groups; drop subpops and sex splits.
-        if (
-            not label
-            or label not in {"AFR", "AMR", "EAS", "NFE", "SAS", "FIN", "ASJ"}
-            or "_" in label
-            or label.startswith("HGDP:")
-            or label.startswith("1KG:")
-        ):
+        pop_id = pop.get("id") or ""
+        # Skip subpopulations, sex splits, and reference panel entries
+        if "_" in pop_id or pop_id.startswith("hgdp:") or pop_id.startswith("1kg:"):
+            continue
+        label = POPULATION_MAP.get(pop_id)
+        if not label or label not in ALLOWED:
             continue
         ac = pop.get("ac")
         an = pop.get("an")
@@ -137,36 +152,43 @@ def parse_population_frequencies(payload: Dict[str, Any]) -> Dict[str, Dict[str,
                 af = float(ac) / float(an)
             except (TypeError, ValueError, ZeroDivisionError):
                 af = None
-        result[label] = {
-            "af": af,
-            "an": an,
-            "ac": ac,
-        }
+        result[label] = {"af": af, "an": an, "ac": ac}
     return result
 
 
-def batch_fetch_frequencies(rsids: Iterable[str]) -> Dict[str, Dict[str, Dict[str, float]]]:
-    """Fetch population frequencies for a batch of rsIDs.
-
-    Returns: {rsid: {POP: {ac, an, af}}}
-    """
-    results: Dict[str, Dict[str, Dict[str, float]]] = {}
+def batch_fetch_frequencies(rsids: Iterable[str]) -> Dict[str, Dict[str, Dict[str, float]] | None]:
+    results: Dict[str, Dict[str, Dict[str, float]] | None] = {}
     resolved = 0
     total = 0
+    cache = Cache()
     with httpx.Client() as client:
         for rsid in rsids:
             total += 1
+            results[rsid] = {}
             try:
+                found, cached = cache.get_with_presence(f"gnomad:{rsid}", ttl_seconds=60 * 60 * 24 * 30)
+                if found:
+                    results[rsid] = cached
+                    if cached:
+                        resolved += 1
+                    continue
                 variant_id, payload = resolve_variant_id(client, rsid)
-                if not variant_id:
-                    results[rsid] = {}
+                time.sleep(1)
+                if variant_id is None and payload is None:
+                    results[rsid] = None
+                    cache.set(f"gnomad:{rsid}", None, ttl_seconds=60 * 10)
                     continue
-                resolved += 1
-                if not payload or payload.get("variant") is None:
+                if not variant_id or not payload:
                     results[rsid] = {}
+                    cache.set(f"gnomad:{rsid}", {})
                     continue
-                results[rsid] = parse_population_frequencies(payload)
+                parsed = parse_population_frequencies(payload)
+                results[rsid] = parsed
+                cache.set(f"gnomad:{rsid}", parsed)
+                if parsed:
+                    resolved += 1
             except (httpx.HTTPError, ValueError):
                 results[rsid] = {}
+            time.sleep(1)
     print(f"Resolved rsIDs: {resolved}/{total}")
     return results

@@ -1,0 +1,135 @@
+{
+  "summary": {
+    "accession": "GCST90029052",
+    "model_name": "Breast Cancer",
+    "total_variants": 12,
+    "coverage_scores": {
+      "AMR": 0.6256983240223463,
+      "FIN": 0.6256983240223463,
+      "EAS": 0.6256983240223463,
+      "SAS": 0.6256983240223463,
+      "ASJ": 0.6256983240223463,
+      "AFR": 0.6256983240223463,
+      "NFE": 0.6256983240223463
+    },
+    "reliability_scores": {
+      "AMR": 0.6256983240223463,
+      "FIN": 0.6256983240223463,
+      "EAS": 0.3234301675977654,
+      "SAS": 0.3012659217877095,
+      "ASJ": 0.21714636871508378,
+      "AFR": 0.6256983240223463,
+      "NFE": 0.6256983240223463
+    },
+    "gap_index": {
+      "AMR": 0.0,
+      "FIN": 0.0,
+      "EAS": 0.4830892857142856,
+      "SAS": 0.5185124999999999,
+      "ASJ": 0.6529535714285715,
+      "AFR": 0.0,
+      "NFE": 0.0
+    },
+    "flagged_variants": []
+  },
+  "variants": [
+    {
+      "variant_id": "rs2981582",
+      "rsid": "rs2981582",
+      "effect_allele": "A",
+      "other_allele": null,
+      "effect_size": 0.24,
+      "p_value": 1e-18
+    },
+    {
+      "variant_id": "rs3803662",
+      "rsid": "rs3803662",
+      "effect_allele": "T",
+      "other_allele": null,
+      "effect_size": 0.21,
+      "p_value": 1e-16
+    },
+    {
+      "variant_id": "rs889312",
+      "rsid": "rs889312",
+      "effect_allele": "C",
+      "other_allele": null,
+      "effect_size": 0.17,
+      "p_value": 1e-12
+    },
+    {
+      "variant_id": "rs3817198",
+      "rsid": "rs3817198",
+      "effect_allele": "T",
+      "other_allele": null,
+      "effect_size": 0.12,
+      "p_value": 1e-10
+    },
+    {
+      "variant_id": "rs13387042",
+      "rsid": "rs13387042",
+      "effect_allele": "G",
+      "other_allele": null,
+      "effect_size": 0.15,
+      "p_value": 1e-11
+    },
+    {
+      "variant_id": "rs8051542",
+      "rsid": "rs8051542",
+      "effect_allele": "C",
+      "other_allele": null,
+      "effect_size": 0.09,
+      "p_value": 1e-09
+    },
+    {
+      "variant_id": "rs11249433",
+      "rsid": "rs11249433",
+      "effect_allele": "G",
+      "other_allele": null,
+      "effect_size": 0.13,
+      "p_value": 1e-10
+    },
+    {
+      "variant_id": "rs4973768",
+      "rsid": "rs4973768",
+      "effect_allele": "T",
+      "other_allele": null,
+      "effect_size": 0.11,
+      "p_value": 1e-09
+    },
+    {
+      "variant_id": "rs10941679",
+      "rsid": "rs10941679",
+      "effect_allele": "G",
+      "other_allele": null,
+      "effect_size": 0.19,
+      "p_value": 1e-14
+    },
+    {
+      "variant_id": "rs2046210",
+      "rsid": "rs2046210",
+      "effect_allele": "A",
+      "other_allele": null,
+      "effect_size": 0.16,
+      "p_value": 1e-12
+    },
+    {
+      "variant_id": "rs999737",
+      "rsid": "rs999737",
+      "effect_allele": "A",
+      "other_allele": null,
+      "effect_size": 0.08,
+      "p_value": 1e-08
+    },
+    {
+      "variant_id": "rs3757318",
+      "rsid": "rs3757318",
+      "effect_allele": "C",
+      "other_allele": null,
+      "effect_size": 0.14,
+      "p_value": 1e-11
+    }
+  ],
+  "frequencies": [],
+  "coverage": []
+}

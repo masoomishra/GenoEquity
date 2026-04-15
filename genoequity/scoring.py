@@ -37,7 +37,8 @@ def compute_variant_scores(
 
     all_ancestries: set[str] = set()
     for pops in variant_frequencies.values():
-        all_ancestries.update(pops.keys())
+        if pops:
+            all_ancestries.update(pops.keys())
 
     #Loop through each variant 
     #For each variant, pops contains ancestry info like NFE, AFR, AMR, etc 
